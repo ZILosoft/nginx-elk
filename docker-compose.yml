@@ -1,0 +1,129 @@
+version: '3.2'
+
+services:
+
+## Разворачиваем контейнеры с NGINX
+  nginx-cloudflare:
+    build:
+      context: .docker/nginx-cloudflare/
+    ports:
+      - 80:80
+    volumes:
+      - .docker/logs:/var/log/nginx
+    depends_on:
+      - nginx-node1
+      - nginx-node2
+    networks:
+      - nginx
+
+  nginx-node1:
+    build:
+      context: .docker/nginx-node1/
+    volumes:
+      - .docker/logs:/var/log/nginx
+    depends_on:
+      - nginx-web
+    networks:
+      - nginx
+
+  nginx-node2:
+    build:
+      context: .docker/nginx-node2/
+    volumes:
+      - .docker/logs:/var/log/nginx
+    depends_on:
+      - nginx-web
+    networks:
+      - nginx
+
+  nginx-web:
+    build:
+      context: .docker/nginx-web/
+    volumes:
+      - .docker/logs:/var/log/nginx
+    networks:
+      - nginx
+
+  ## Далее уже ELK стек
+  elasticsearch:
+    build:
+      context: .docker/elk/elasticsearch/
+    volumes:
+      - type: bind
+        source: .docker/elk/elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - type: volume
+        source: elasticsearch
+        target: /usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      ELASTIC_PASSWORD: zilpassword
+      discovery.type: single-node
+    networks:
+      - elk
+
+  logstash:
+    build:
+      context: .docker/elk/logstash/
+    volumes:
+      - type: bind
+        source: .docker/elk/logstash/config/logstash.yml
+        target: /usr/share/logstash/config/logstash.yml
+        read_only: true
+      - type: bind
+        source: .docker/elk/logstash/pipeline
+        target: /usr/share/logstash/pipeline
+        read_only: true
+    ports:
+      - "5000:5000"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elk
+      - nginx
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    build:
+      context: .docker/elk/kibana/
+    volumes:
+      - type: bind
+        source: .docker/elk/kibana/config/kibana.yml
+        target: /usr/share/kibana/config/kibana.yml
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  ## Filebeat забирает файлы из .docker/logs и пуляет их в логстеш
+  filebeat:
+    build:
+      context: .docker/elk/filebeat
+    entrypoint: "filebeat -e -strict.perms=false"
+    volumes:
+      - .docker/elk/filebeat/config/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - .docker/logs:/var/log/nginx
+    networks:
+      - elk
+      - nginx
+    depends_on:
+      - nginx-cloudflare
+      - logstash
+      - elasticsearch
+      - kibana
+
+networks:
+  elk:
+    driver: bridge
+  nginx:
+    driver: bridge
+
+volumes:
+  elasticsearch:

@@ -1,0 +1,38 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/nginx-cloudflare*.log
+    fields:
+      tags: ["nginx-cloudflare"]
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/nginx-node1*.log
+    fields:
+      tags: ["nginx-node1"]
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/nginx-node2*.log
+    fields:
+      tags: ["nginx-node2"]
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/nginx-web*.log
+    fields:
+      tags: ["nginx-web"]
+
+
+output.logstash:
+  enabled: true
+  hosts: ["logstash:5044"]
+
+setup.kibana:
+  host: "http://kibana:5601"
+  username: "elastic"
+  password: "zilpassword"
