@@ -12,11 +12,17 @@ docker-compose up
 
 после того как все контейнеры поднимутся можно зайти по адресу
 
-`http://loclahost` и увидеть страницу Hello World!
+[http://localhost](http://localhost) и увидеть страницу Hello World!
 
 для доступа к кибане
 
-`http://localhost:5601`
+
+[http://localhost:5601](http://localhost:5601)
+
+:warning: кибана стартует достаточно долго придется подождать
+
+так же придется добавить index pattern 
+[тут](http://localhost:5601/app/kibana#/management/kibana/index_pattern?_g=())
 
 Авторизация
 - Username: elastic
